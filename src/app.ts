@@ -13,6 +13,10 @@ class ContentRetriever {
     private apiKeySection: HTMLElement;
     private apiKeyInput: HTMLInputElement;
     private saveApiKeyButton: HTMLButtonElement;
+    private copyButton: HTMLButtonElement;
+    private markdownButton: HTMLButtonElement;
+    private markdownContainer: HTMLElement;
+    private markdownOutput: HTMLPreElement;
     private visitedUrls: Set<string>;
     private totalPages: number;
     private downloadedPages: number;
@@ -29,7 +33,12 @@ class ContentRetriever {
         this.apiKeySection = document.getElementById('apiKeySection') as HTMLElement;
         this.apiKeyInput = document.getElementById('apiKeyInput') as HTMLInputElement;
         this.saveApiKeyButton = document.getElementById('saveApiKey') as HTMLButtonElement;
+        this.copyButton = document.getElementById('copyButton') as HTMLButtonElement;
+        this.markdownButton = document.getElementById('markdownButton') as HTMLButtonElement;
+        this.markdownContainer = document.getElementById('markdownContainer') as HTMLElement;
+        this.markdownOutput = document.getElementById('markdownOutput') as HTMLPreElement;
         this.progressContainer.style.display = 'none';
+        this.markdownContainer.style.display = 'none';
         this.visitedUrls = new Set<string>();
         this.totalPages = 0;
         this.downloadedPages = 0;
@@ -88,11 +97,193 @@ class ContentRetriever {
         return count;
     }
 
+    private async copyResponseText(): Promise<void> {
+        const text = this.responseOutput.textContent;
+        if (text) {
+            try {
+                await navigator.clipboard.writeText(text);
+                this.copyButton.textContent = 'Copied!';
+                setTimeout(() => {
+                    this.copyButton.textContent = 'Copy';
+                }, 2000);
+            } catch (err) {
+                console.error('Failed to copy text:', err);
+            }
+        }
+    }
+
+    private async formatMarkdown(): Promise<void> {
+        const text = this.responseOutput.textContent;
+        if (!text) return;
+
+        const apiKey = localStorage.getItem('openRouterApiKey');
+        if (!apiKey) {
+            this.toggleSettings();
+            return;
+        }
+
+        const originalButtonText = this.markdownButton.textContent;
+        this.markdownButton.disabled = true;
+        this.markdownButton.textContent = 'Formatting...';
+        this.markdownContainer.style.display = 'block';
+        this.markdownOutput.textContent = 'Formatting content as markdown...';
+        
+        try {
+            if (!text.trim()) {
+                throw new Error('No content to format');
+            }
+            const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`,
+                    'HTTP-Referer': window.location.origin,
+                    'X-Title': 'Website Content Retriever'
+                },
+                body: JSON.stringify({
+                    model: 'google/gemini-2.0-flash-exp:free',
+                    messages: [
+                        {
+                            role: 'user',
+                            content: `
+**System/Instructions:**
+You are an expert at converting HTML into well-structured Markdown. When given HTML input, you will:
+
+1. Parse and understand the structure of the HTML.
+2. Convert headings (\`<h1>\`, \`<h2>\`, etc.) to Markdown headings (\`#\`, \`##\`, etc.).
+3. Convert lists (\`<ul>\`, \`<ol>\`, \`<li>\`) to Markdown lists (\`-\`, \`1.\`, etc.).
+4. Convert any emphasized text (\`<b>\`, \`<strong>\`, \`<i>\`, \`<em>\`) to **bold** or *italic* in Markdown.
+5. Convert images (\`<img>\`) to Markdown image syntax \`![alt text](URL)\`, if desired.
+6. Convert links (\`<a>\`) to proper Markdown links \`[text](URL)\`.
+7. Remove all remaining HTML tags (e.g., \`<div>\`, \`<span>\`, etc.) that are purely structural and do not affect formatting.
+8. Retain the text content and hierarchical formatting.
+9. Provide the final output in **Markdown only** with no raw HTML elements.
+
+**Response to User:**
+1. Present the converted content in Markdown format.
+2. Do not include any HTML tags in the final response.
+3. Retain proper formatting, bullet points, headings, etc.
+
+---
+
+### Usage Example
+
+\`\`\`
+**User Input:**
+
+<!DOCTYPE html>
+<html>
+    <head>
+    <title>Example Page</title>
+    </head>
+    <body>
+    <h1>Welcome to My Site</h1>
+    <p>This is a paragraph explaining <strong>important</strong> details.</p>
+    <ul>
+        <li>Item 1</li>
+        <li>Item 2</li>
+    </ul>
+    <div>
+        <p>Another paragraph with an <a href="https://www.example.com">Example Link</a>.</p>
+    </div>
+    </body>
+</html>
+\`\`\`
+
+**Model Response (ideal output):**
+
+\`\`\`
+# Welcome to My Site
+
+This is a paragraph explaining **important** details.
+
+- Item 1
+- Item 2
+
+Another paragraph with an [Example Link](https://www.example.com).
+\`\`\`
+
+---
+
+**User Input:**
+
+${text}`
+                        }
+                    ],
+                    stream: true,
+                    temperature: 0.3,
+                    max_tokens: 4000
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(`Failed to get markdown response: ${errorData.error || response.statusText}`);
+            }
+
+            if (!response.body) {
+                throw new Error('Failed to get markdown response');
+            }
+
+            this.markdownContainer.style.display = 'block';
+            this.markdownOutput.textContent = '';
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n');
+                buffer = lines.pop() || ''; // Keep the last partial line in buffer
+
+                for (const line of lines) {
+                    const trimmedLine = line.trim();
+                    if (!trimmedLine || trimmedLine === 'data: [DONE]') continue;
+                    if (trimmedLine.startsWith('data: ')) {
+                        try {
+                            const json = JSON.parse(trimmedLine.slice(6));
+                            if (json.choices?.[0]?.delta?.content) {
+                                this.markdownOutput.textContent += json.choices[0].delta.content;
+                            }
+                        } catch (e) {
+                            console.debug('Failed to parse JSON:', trimmedLine);
+                        }
+                    }
+                }
+            }
+            
+            // Handle any remaining data in the buffer
+            if (buffer.trim()) {
+                try {
+                    const json = JSON.parse(buffer.replace('data: ', ''));
+                    if (json.choices?.[0]?.delta?.content) {
+                        this.markdownOutput.textContent += json.choices[0].delta.content;
+                    }
+                } catch (e) {
+                    console.debug('Failed to parse final buffer:', buffer);
+                }
+            }
+        } catch (error) {
+            console.error('Error formatting markdown:', error);
+            this.markdownOutput.textContent = `Error formatting markdown: ${error instanceof Error ? error.message : 'Unknown error occurred'}`;
+            this.markdownContainer.style.display = 'block';
+        } finally {
+            this.markdownButton.disabled = false;
+            this.markdownButton.textContent = originalButtonText;
+        }
+    }
+
     private init(): void {
         this.retrieveButton.addEventListener('click', () => this.handleRetrieve());
         this.urlInput.addEventListener('input', () => this.validateInput());
         this.settingsButton.addEventListener('click', () => this.toggleSettings());
         this.saveApiKeyButton.addEventListener('click', () => this.saveApiKey());
+        this.copyButton.addEventListener('click', () => this.copyResponseText());
+        this.markdownButton.addEventListener('click', () => this.formatMarkdown());
     }
 
     private validateInput(): void {
@@ -116,6 +307,8 @@ class ContentRetriever {
         this.progressBar.value = 0;
         this.downloadedPages = 0;
         this.progressContainer.style.display = 'block';
+        this.markdownContainer.style.display = 'none';
+        this.markdownOutput.textContent = '';
 
         try {
             // First count total pages

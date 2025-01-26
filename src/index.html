@@ -33,8 +33,18 @@
             <progress id="downloadProgress" value="0" max="100"></progress>
         </div>
         <div class="response-container">
-            <h2>Response:</h2>
+            <div class="response-header">
+                <h2>Response:</h2>
+                <div class="response-actions">
+                    <button id="copyButton" class="action-button">Copy</button>
+                    <button id="markdownButton" class="action-button">Markdown Format</button>
+                </div>
+            </div>
             <pre id="responseOutput"></pre>
+        </div>
+        <div id="markdownContainer" class="response-container" style="display: none;">
+            <h2>Markdown Response:</h2>
+            <pre id="markdownOutput"></pre>
         </div>
     </div>
 </body>
