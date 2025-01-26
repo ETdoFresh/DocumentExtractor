@@ -75,4 +75,10 @@ Note: Do not combine 1 and 2 with 3 and 4 in the same command
 - If no test, then make sure the code is built and runs without errors
 - Check if hot reload mode is running by looking at Actively Running Terminals
   - If `npm run dev` is not running, execute it before proceeding
+  - If `npm run dev` fails with EADDRINUSE, continue using the existing server instance
   - Wait for webpack compilation success message before continuing
+
+## Development Server Management
+- Utilize existing development server instances when available
+- Do not attempt to kill or restart servers that are already running
+- When making configuration changes, let hot reload handle the updates

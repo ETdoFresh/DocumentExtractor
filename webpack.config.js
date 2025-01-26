@@ -32,6 +32,44 @@ module.exports = {
     static: {
       directory: path.join(__dirname, 'dist'),
     },
+    proxy: {
+      '/proxy': {
+        target: 'http://localhost:8080',
+        secure: false,
+        changeOrigin: true,
+        router: (req) => {
+          const url = new URL(req.url, 'http://localhost:8080');
+          const targetUrl = url.searchParams.get('url');
+          if (!targetUrl) {
+            throw new Error('Missing url parameter');
+          }
+          return targetUrl;
+        },
+        onProxyReq: (proxyReq, req) => {
+          const url = new URL(req.url, 'http://localhost:8080');
+          const targetUrl = url.searchParams.get('url');
+          if (targetUrl) {
+            const parsedUrl = new URL(targetUrl);
+            proxyReq.path = parsedUrl.pathname + parsedUrl.search;
+            proxyReq.setHeader('host', parsedUrl.host);
+            proxyReq.setHeader('origin', parsedUrl.origin);
+          }
+        },
+        onProxyRes: (proxyRes) => {
+          Object.keys(proxyRes.headers).forEach(key => {
+            if (key.toLowerCase().startsWith('x-frame-options') ||
+                key.toLowerCase().startsWith('content-security-policy')) {
+              delete proxyRes.headers[key];
+            }
+          });
+          
+          proxyRes.headers['access-control-allow-origin'] = '*';
+          proxyRes.headers['access-control-allow-methods'] = 'GET, POST, PUT, DELETE, PATCH, OPTIONS';
+          proxyRes.headers['access-control-allow-headers'] = 'X-Requested-With, content-type, Authorization';
+          proxyRes.headers['access-control-max-age'] = '3600';
+        }
+      }
+    },
     compress: true,
     port: 8080,
     hot: true, // Enable hot module replacement

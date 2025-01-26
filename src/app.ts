@@ -29,12 +29,17 @@ class ContentRetriever {
     }
 
     private async handleRetrieve(): Promise<void> {
-        const url = this.urlInput.value.trim();
+        const inputUrl = this.urlInput.value.trim();
         this.retrieveButton.disabled = true;
         this.responseOutput.textContent = 'Loading...';
 
         try {
-            const response = await fetch(url);
+            const fetchUrl = `/proxy?url=${encodeURIComponent(inputUrl)}`;
+            const response = await fetch(fetchUrl, {
+                headers: {
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
+                }
+            });
             const text = await response.text();
             this.responseOutput.textContent = text;
         } catch (error) {
