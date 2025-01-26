@@ -381,11 +381,35 @@ ${text}`
             // Clean up the HTML content using Cheerio
             const $ = cheerio.load(text);
             
-            // Remove script and meta tags
-            $('script').remove();
-            $('meta').remove();
+            // Store title before removing head
+            const title = $('title').text().trim();
             
-            // Keep all other content and structure
+            // Remove head and unwanted tags
+            $('head').remove();
+            $('script').remove();
+            $('style').remove();
+            
+            // Create new head with title if it existed
+            if (title) {
+                $('html').prepend(`<head><title>${title}</title></head>`);
+            }
+            
+            // Clean up whitespace outside body
+            $('html').contents().each((_, element) => {
+                if (element.type === 'text' && !$(element).parent().is('body')) {
+                    $(element).remove();
+                }
+            });
+            
+            // Trim whitespace at start and end of body
+            const body = $('body');
+            if (body.length) {
+                const bodyHtml = body.html();
+                if (bodyHtml) {
+                    body.html(bodyHtml.trim());
+                }
+            }
+            
             results[url] = $.html();
             
             // Update progress after successful download
