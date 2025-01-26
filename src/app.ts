@@ -367,12 +367,12 @@ ${text}`
                     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
                 }
             });
-            let text = await response.text();
+            const text = await response.text();
             
             // Clean up the HTML content using Cheerio
             const $ = cheerio.load(text);
             
-            // Remove only script and meta tags
+            // Remove script and meta tags
             $('script').remove();
             $('meta').remove();
             
@@ -390,7 +390,7 @@ ${text}`
                 Object.assign(results, subResults);
             }
         } catch (error) {
-            console.error(`Error fetching ${url}:`, error);
+            console.error(`Error setting up browser for ${url}:`, error);
         }
 
         return results;

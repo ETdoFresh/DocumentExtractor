@@ -9,6 +9,7 @@
     "watch": "webpack --watch --mode development"
   },
   "devDependencies": {
+    "@types/puppeteer": "^7.0.4",
     "css-loader": "^6.9.1",
     "html-webpack-plugin": "^5.6.0",
     "http-proxy-middleware": "^3.0.3",
@@ -20,6 +21,7 @@
     "webpack-dev-server": "^4.15.1"
   },
   "dependencies": {
-    "cheerio": "^1.0.0"
+    "cheerio": "^1.0.0",
+    "puppeteer": "^24.1.1"
   }
 }
