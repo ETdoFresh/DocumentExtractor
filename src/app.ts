@@ -14,9 +14,11 @@ class ContentRetriever {
     private apiKeyInput: HTMLInputElement;
     private saveApiKeyButton: HTMLButtonElement;
     private copyButton: HTMLButtonElement;
+    private copyMarkdownButton: HTMLButtonElement;
     private markdownButton: HTMLButtonElement;
     private markdownContainer: HTMLElement;
     private markdownOutput: HTMLPreElement;
+    private streamingIndicator: HTMLElement;
     private visitedUrls: Set<string>;
     private totalPages: number;
     private downloadedPages: number;
@@ -34,9 +36,11 @@ class ContentRetriever {
         this.apiKeyInput = document.getElementById('apiKeyInput') as HTMLInputElement;
         this.saveApiKeyButton = document.getElementById('saveApiKey') as HTMLButtonElement;
         this.copyButton = document.getElementById('copyButton') as HTMLButtonElement;
+        this.copyMarkdownButton = document.getElementById('copyMarkdownButton') as HTMLButtonElement;
         this.markdownButton = document.getElementById('markdownButton') as HTMLButtonElement;
         this.markdownContainer = document.getElementById('markdownContainer') as HTMLElement;
         this.markdownOutput = document.getElementById('markdownOutput') as HTMLPreElement;
+        this.streamingIndicator = document.getElementById('streamingIndicator') as HTMLElement;
         this.progressContainer.style.display = 'none';
         this.markdownContainer.style.display = 'none';
         this.visitedUrls = new Set<string>();
@@ -112,6 +116,21 @@ class ContentRetriever {
         }
     }
 
+    private async copyMarkdownText(): Promise<void> {
+        const text = this.markdownOutput.textContent;
+        if (text) {
+            try {
+                await navigator.clipboard.writeText(text);
+                this.copyMarkdownButton.textContent = 'Copied!';
+                setTimeout(() => {
+                    this.copyMarkdownButton.textContent = 'Copy';
+                }, 2000);
+            } catch (err) {
+                console.error('Failed to copy markdown text:', err);
+            }
+        }
+    }
+
     private async formatMarkdown(): Promise<void> {
         const text = this.responseOutput.textContent;
         if (!text) return;
@@ -132,6 +151,7 @@ class ContentRetriever {
             if (!text.trim()) {
                 throw new Error('No content to format');
             }
+            this.streamingIndicator.style.display = 'inline';
             const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
                 method: 'POST',
                 headers: {
@@ -271,9 +291,11 @@ ${text}`
             console.error('Error formatting markdown:', error);
             this.markdownOutput.textContent = `Error formatting markdown: ${error instanceof Error ? error.message : 'Unknown error occurred'}`;
             this.markdownContainer.style.display = 'block';
+            this.streamingIndicator.style.display = 'none';
         } finally {
             this.markdownButton.disabled = false;
             this.markdownButton.textContent = originalButtonText;
+            this.streamingIndicator.style.display = 'none';
         }
     }
 
@@ -283,6 +305,7 @@ ${text}`
         this.settingsButton.addEventListener('click', () => this.toggleSettings());
         this.saveApiKeyButton.addEventListener('click', () => this.saveApiKey());
         this.copyButton.addEventListener('click', () => this.copyResponseText());
+        this.copyMarkdownButton.addEventListener('click', () => this.copyMarkdownText());
         this.markdownButton.addEventListener('click', () => this.formatMarkdown());
     }
 
@@ -344,8 +367,17 @@ ${text}`
                     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
                 }
             });
-            const text = await response.text();
-            results[url] = text;
+            let text = await response.text();
+            
+            // Clean up the HTML content using Cheerio
+            const $ = cheerio.load(text);
+            
+            // Remove only script and meta tags
+            $('script').remove();
+            $('meta').remove();
+            
+            // Keep all other content and structure
+            results[url] = $.html();
             
             // Update progress after successful download
             this.downloadedPages++;
@@ -392,7 +424,20 @@ ${text}`
     private formatResults(results: { [url: string]: string }): string {
         let output = '';
         for (const [url, content] of Object.entries(results)) {
-            output += `\n=== ${url} ===\n${content}\n`;
+            // Load content into Cheerio
+            const $ = cheerio.load(content);
+            
+            // Remove HTML comments only
+            $('*').contents().each((_, element) => {
+                if (element.type === 'comment') {
+                    $(element).remove();
+                }
+            });
+            
+            // Get the content with HTML structure preserved
+            const cleanedContent = $.html();
+            
+            output += `\n=== ${url} ===\n${cleanedContent}\n`;
         }
         return output.trim();
     }

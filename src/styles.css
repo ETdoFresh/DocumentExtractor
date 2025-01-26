@@ -186,3 +186,18 @@
     border: 1px solid #dee2e6;
     border-radius: 4px;
 }
+
+/* Streaming indicator */
+.streaming-indicator {
+    display: none;
+    margin-left: 0.5rem;
+    color: #007bff;
+    font-size: 0.8rem;
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 0.4; }
+    50% { opacity: 1; }
+    100% { opacity: 0.4; }
+}

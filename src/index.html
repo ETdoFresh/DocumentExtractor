@@ -43,7 +43,12 @@
             <pre id="responseOutput"></pre>
         </div>
         <div id="markdownContainer" class="response-container" style="display: none;">
-            <h2>Markdown Response:</h2>
+            <div class="response-header">
+                <h2>Markdown Response:<span id="streamingIndicator" class="streaming-indicator">(streaming...)</span></h2>
+                <div class="response-actions">
+                    <button id="copyMarkdownButton" class="action-button">Copy</button>
+                </div>
+            </div>
             <pre id="markdownOutput"></pre>
         </div>
     </div>
