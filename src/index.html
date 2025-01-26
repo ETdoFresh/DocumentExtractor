@@ -18,15 +18,23 @@
             </div>
         </div>
         <div class="input-group">
-            <input type="url" id="urlInput" placeholder="Enter URL (e.g., https://example.com)" />
-            <select id="recursionLimit" title="Maximum depth for recursive link extraction">
-                <option value="1">1 level deep</option>
-                <option value="2" selected>2 levels deep</option>
-                <option value="3">3 levels deep</option>
-                <option value="4">4 levels deep</option>
-                <option value="5">5 levels deep</option>
-            </select>
-            <button id="retrieveButton">Retrieve</button>
+            <div>
+                <input type="url" id="urlInput" placeholder="Enter URL (e.g., https://example.com)" />
+                <button id="retrieveButton">Retrieve</button>
+            </div>
+            <div class="options-group">
+                <select id="recursionLimit" title="Maximum depth for recursive link extraction">
+                    <option value="1">1 level deep</option>
+                    <option value="2" selected>2 levels deep</option>
+                    <option value="3">3 levels deep</option>
+                    <option value="4">4 levels deep</option>
+                    <option value="5">5 levels deep</option>
+                </select>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="samePath" checked>
+                    <label for="samePath">Only download pages in same folder</label>
+                </div>
+            </div>
         </div>
         <div id="progress-container" class="progress-container">
             <div id="progressText"></div>

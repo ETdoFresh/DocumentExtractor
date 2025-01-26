@@ -19,6 +19,7 @@ class ContentRetriever {
     private markdownContainer: HTMLElement;
     private markdownOutput: HTMLPreElement;
     private streamingIndicator: HTMLElement;
+    private samePathCheckbox: HTMLInputElement;
     private visitedUrls: Set<string>;
     private totalPages: number;
     private downloadedPages: number;
@@ -41,6 +42,7 @@ class ContentRetriever {
         this.markdownContainer = document.getElementById('markdownContainer') as HTMLElement;
         this.markdownOutput = document.getElementById('markdownOutput') as HTMLPreElement;
         this.streamingIndicator = document.getElementById('streamingIndicator') as HTMLElement;
+        this.samePathCheckbox = document.getElementById('samePath') as HTMLInputElement;
         this.progressContainer.style.display = 'none';
         this.markdownContainer.style.display = 'none';
         this.visitedUrls = new Set<string>();
@@ -191,6 +193,8 @@ You are an expert at converting HTML into well-structured Markdown. When given H
 7. Remove all remaining HTML tags (e.g., \`<div>\`, \`<span>\`, etc.) that are purely structural and do not affect formatting.
 8. Retain the text content and hierarchical formatting.
 9. Provide the final output in **Markdown only** with no raw HTML elements.
+10. Reorder or reformat content as needed for better readability. [For Example: Move Introduction section to the top.]
+11. Add <EOF> at the end of the content.
 
 **Response to User:**
 1. Present the converted content in Markdown format.
@@ -264,10 +268,12 @@ ${text}`
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
             let buffer = '';
+            let responseCount = 0;
+            let foundEOF = false;
 
             while (true) {
                 const { done, value } = await reader.read();
-                if (done) break;
+                if (done || foundEOF || responseCount >= 10) break;
 
                 buffer += decoder.decode(value, { stream: true });
                 const lines = buffer.split('\n');
@@ -280,25 +286,46 @@ ${text}`
                         try {
                             const json = JSON.parse(trimmedLine.slice(6));
                             if (json.choices?.[0]?.delta?.content) {
-                                this.markdownOutput.textContent += json.choices[0].delta.content;
+                                const content = json.choices[0].delta.content;
+                                this.markdownOutput.textContent += content;
+                                
+                                // Check for EOF marker
+                                if (content.includes('<EOF>')) {
+                                    foundEOF = true;
+                                    // Remove the EOF marker from display
+                                    this.markdownOutput.textContent = this.markdownOutput.textContent.replace('<EOF>', '');
+                                    break;
+                                }
                             }
                         } catch (e) {
                             console.debug('Failed to parse JSON:', trimmedLine);
                         }
+                        responseCount++;
                     }
                 }
             }
             
-            // Handle any remaining data in the buffer
-            if (buffer.trim()) {
+            // Handle any remaining data in the buffer if we haven't found EOF
+            if (!foundEOF && buffer.trim()) {
                 try {
                     const json = JSON.parse(buffer.replace('data: ', ''));
                     if (json.choices?.[0]?.delta?.content) {
-                        this.markdownOutput.textContent += json.choices[0].delta.content;
+                        const content = json.choices[0].delta.content;
+                        this.markdownOutput.textContent += content;
+                        
+                        // One final check for EOF
+                        if (content.includes('<EOF>')) {
+                            this.markdownOutput.textContent = this.markdownOutput.textContent.replace('<EOF>', '');
+                        }
                     }
                 } catch (e) {
                     console.debug('Failed to parse final buffer:', buffer);
                 }
+            }
+
+            // Add a note if we hit the response limit
+            if (responseCount >= 10 && !foundEOF) {
+                console.debug('Stream closed after 10 responses without finding EOF marker');
             }
         } catch (error) {
             console.error('Error formatting markdown:', error);
@@ -390,7 +417,6 @@ ${text}`
 
             const data = await response.json();
             const text = data.html;
-            console.log('Proxy Response:', text);
 
             // Clean up the HTML content using Cheerio
             const $ = cheerio.load(text);
@@ -457,10 +483,17 @@ ${text}`
                     const url = new URL(href, baseUrl);
                     // Remove hash/anchor part
                     url.hash = '';
-                    // Only include links from the same domain
-                    if (url.hostname === baseUrlObj.hostname &&
+                    // Only include links that match our criteria
+                    const isValidLink = url.hostname === baseUrlObj.hostname &&
                         !this.visitedUrls.has(url.href) &&
-                        url.protocol.startsWith('http')) {
+                        url.protocol.startsWith('http');
+
+                    // Check if we should only include links from same path
+                    const isSamePath = this.samePathCheckbox.checked ?
+                        url.pathname.startsWith(baseUrlObj.pathname.replace(/\/[^/]*$/, '/')) :
+                        true;
+
+                    if (isValidLink && isSamePath) {
                         links.add(url.href);
                     }
                 } catch (error) {
