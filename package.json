@@ -1,0 +1,20 @@
+{
+  "name": "website-content-retriever",
+  "version": "1.0.0",
+  "description": "A simple website content retriever",
+  "scripts": {
+    "build": "webpack --mode production",
+    "start": "webpack serve --mode development"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "typescript": "^5.3.3",
+    "webpack": "^5.90.0",
+    "webpack-cli": "^5.1.4",
+    "webpack-dev-server": "^4.15.1",
+    "ts-loader": "^9.5.1",
+    "css-loader": "^6.9.1",
+    "style-loader": "^3.3.4",
+    "html-webpack-plugin": "^5.6.0"
+  }
+}

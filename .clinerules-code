@@ -1,0 +1,75 @@
+
+# Code Workflow Rules
+
+## Conciseness
+- Strive to write code in as few lines as possible while maintaining readability
+- Avoid unnecessary verbosity and boilerplate code
+- Use language features and idioms to express intent concisely
+
+## Readability
+- Write code for humans first, computers second
+- Use meaningful names for variables, functions, and classes
+- Keep functions small and focused on a single responsibility
+- Use consistent formatting and style throughout the codebase
+
+## Maintainability
+- Write code that is easy to modify and extend
+- Avoid premature optimization - focus on clarity first
+
+## Error Handling
+- Handle errors explicitly and gracefully
+- Use appropriate error types and meaningful error messages
+- Fail fast and fail visibly
+- If encountering persistent or complex errors, switch to architect mode for analysis and guidance
+
+## Collaboration
+- Write code that others can understand and work with
+- Use version control effectively with clear commit messages
+- Document public APIs and interfaces
+- Be open to feedback and code reviews
+
+## Communication
+- Respond to users as briefly as possible
+- Only provide necessary information to explain what was done or what is needed
+- No reply is necessary if the action or result is self-explanatory
+- Avoid unnecessary explanations or conversational language
+
+---
+
+# Git Workflow Rules
+
+## Commit Messages
+- Use present tense ("Add feature" not "Added feature")
+- Start with capital letter
+- No prefixes (like "feat:", "fix:", "Initial commit:", etc.)
+- Be descriptive but concise
+- Use dashes (-) for bullet points in multi-line messages when necessary
+
+## Mandatory Git Workflow
+Before committing, always follow these steps in order:
+1. Stage all changes: `git add .`
+2. Review changes: `git --no-pager diff`
+3. Commit changes: `git commit -m "Your commit message here"`
+4. Push changes: `git push`
+
+Note: Commands 1 and 2 may be concatenated into a single command using `&&` or `;`:
+Note: Commands 3 and 4 may be concatenated into a single command using `&&` or `;`:
+Note: Do not combine 1 and 2 with 3 and 4 in the same command
+- Use `;` for Windows (always assume PowerShell) - e.g. `git add .; git commit -m "message"; git push`
+- Use `&&` for Mac/Linux - e.g. `git add . && git commit -m "message" && git push`
+
+## Workflow Guidelines
+- Always review changes before committing
+- Use descriptive commit messages that explain why changes were made
+- Keep commits focused on a single logical change
+- Push changes frequently to avoid large, complex merges
+- Use branches for feature development and bug fixes
+
+---
+
+# Task Management Rules
+
+## Before attempt_completion
+
+- Ensure that any relevant test cases are passing
+- If no test, then make sure the code is built and runs without errors
