@@ -344,7 +344,7 @@ ${text}`
             while (!foundEOF) {
                 // Add a space before continuing to prevent words from running together
                 if (currentResponse) {
-                    this.markdownOutput.textContent = currentResponse + ' ';
+                    this.markdownOutput.textContent = this.markdownOutput.textContent + ' ';
                     
                     messages.push(
                         {
