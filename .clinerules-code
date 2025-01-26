@@ -73,3 +73,6 @@ Note: Do not combine 1 and 2 with 3 and 4 in the same command
 
 - Ensure that any relevant test cases are passing
 - If no test, then make sure the code is built and runs without errors
+- Check if hot reload mode is running by looking at Actively Running Terminals
+  - If `npm run dev` is not running, execute it before proceeding
+  - Wait for webpack compilation success message before continuing

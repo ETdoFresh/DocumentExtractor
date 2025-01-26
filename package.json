@@ -4,7 +4,9 @@
   "description": "A simple website content retriever",
   "scripts": {
     "build": "webpack --mode production",
-    "start": "webpack serve --mode development"
+    "start": "webpack serve --mode development",
+    "dev": "webpack serve --mode development --open --hot",
+    "watch": "webpack --watch --mode development"
   },
   "dependencies": {},
   "devDependencies": {
