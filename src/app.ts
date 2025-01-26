@@ -86,8 +86,22 @@ class ContentRetriever {
         let count = 1;
 
         try {
-            const response = await fetch(url);
-            const text = await response.text();
+            const proxyUrl = 'https://api.etdofresh.com/fetch_generated_html_from_url';
+            const response = await fetch(proxyUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ url: url })
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(`Failed to fetch page: ${error.message || response.statusText}`);
+            }
+
+            const data = await response.json();
+            const text = data.html;
             const links = this.extractLinks(url, text);
             
             for (const link of links) {
@@ -388,6 +402,8 @@ ${text}`
             $('head').remove();
             $('script').remove();
             $('style').remove();
+            $('svg').remove();
+            $('img').remove();
             
             // Create new head with title if it existed
             if (title) {
