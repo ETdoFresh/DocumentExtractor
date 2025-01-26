@@ -9,6 +9,10 @@ class ContentRetriever {
     private progressBar: HTMLProgressElement;
     private progressText: HTMLElement;
     private progressContainer: HTMLElement;
+    private settingsButton: HTMLButtonElement;
+    private apiKeySection: HTMLElement;
+    private apiKeyInput: HTMLInputElement;
+    private saveApiKeyButton: HTMLButtonElement;
     private visitedUrls: Set<string>;
     private totalPages: number;
     private downloadedPages: number;
@@ -21,12 +25,37 @@ class ContentRetriever {
         this.progressBar = document.getElementById('downloadProgress') as HTMLProgressElement;
         this.progressText = document.getElementById('progressText') as HTMLElement;
         this.progressContainer = document.getElementById('progress-container') as HTMLElement;
+        this.settingsButton = document.getElementById('settingsButton') as HTMLButtonElement;
+        this.apiKeySection = document.getElementById('apiKeySection') as HTMLElement;
+        this.apiKeyInput = document.getElementById('apiKeyInput') as HTMLInputElement;
+        this.saveApiKeyButton = document.getElementById('saveApiKey') as HTMLButtonElement;
         this.progressContainer.style.display = 'none';
         this.visitedUrls = new Set<string>();
         this.totalPages = 0;
         this.downloadedPages = 0;
         
         this.init();
+        this.loadApiKey();
+    }
+
+    private toggleSettings(): void {
+        const isVisible = this.apiKeySection.style.display !== 'none';
+        this.apiKeySection.style.display = isVisible ? 'none' : 'block';
+    }
+
+    private loadApiKey(): void {
+        const savedApiKey = localStorage.getItem('openRouterApiKey');
+        if (savedApiKey) {
+            this.apiKeyInput.value = savedApiKey;
+        }
+    }
+
+    private saveApiKey(): void {
+        const apiKey = this.apiKeyInput.value.trim();
+        if (apiKey) {
+            localStorage.setItem('openRouterApiKey', apiKey);
+            this.apiKeySection.style.display = 'none';
+        }
     }
 
     private updateProgress(): void {
@@ -62,6 +91,8 @@ class ContentRetriever {
     private init(): void {
         this.retrieveButton.addEventListener('click', () => this.handleRetrieve());
         this.urlInput.addEventListener('input', () => this.validateInput());
+        this.settingsButton.addEventListener('click', () => this.toggleSettings());
+        this.saveApiKeyButton.addEventListener('click', () => this.saveApiKey());
     }
 
     private validateInput(): void {
