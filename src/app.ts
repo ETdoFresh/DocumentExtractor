@@ -294,15 +294,14 @@ ${text}`
                                 if (json.choices?.[0]?.delta?.content) {
                                     const content = json.choices[0].delta.content;
                                     const outputText = this.markdownOutput.textContent || '';
+                                    currentResponse = currentResponse + content;
                                     this.markdownOutput.textContent = outputText + content;
-                                    currentResponse = this.markdownOutput.textContent || '';
-                                    this.streamingIndicator.textContent = `streaming... (chars: ${currentResponse.length})`;
+                                    this.streamingIndicator.textContent = `(streaming...) chars: ${this.markdownOutput.textContent.length}`;
                                     
                                     if (content.includes('<EOF>')) {
                                         streamFoundEOF = true;
                                         const cleanedText = (this.markdownOutput.textContent || '').replace('<EOF>', '');
                                         this.markdownOutput.textContent = cleanedText;
-                                        currentResponse = cleanedText;
                                         break;
                                     }
                                 }
@@ -319,9 +318,9 @@ ${text}`
                         if (json.choices?.[0]?.delta?.content) {
                             const content = json.choices[0].delta.content;
                             const outputText = this.markdownOutput.textContent || '';
+                            currentResponse = currentResponse + content;
                             this.markdownOutput.textContent = outputText + content;
-                            currentResponse = this.markdownOutput.textContent || '';
-                            this.streamingIndicator.textContent = `streaming... (chars: ${currentResponse.length})`;
+                            this.streamingIndicator.textContent = `streaming... (chars: ${this.markdownOutput.textContent.length})`;
                             
                             if (content.includes('<EOF>')) {
                                 const cleanedText = (this.markdownOutput.textContent || '').replace('<EOF>', '');
@@ -343,12 +342,9 @@ ${text}`
 
             // If EOF not found, continue the conversation
             while (!foundEOF) {
-                console.debug('Continuing conversation due to missing EOF');
-                
                 // Add a space before continuing to prevent words from running together
                 if (currentResponse) {
                     this.markdownOutput.textContent = currentResponse + ' ';
-                    currentResponse = this.markdownOutput.textContent;
                     
                     messages.push(
                         {
@@ -357,10 +353,13 @@ ${text}`
                         },
                         {
                             role: 'user',
-                            content: 'continue'
+                            content: 'continue with documentation precisely where we left off. do not repeat the previous content. If we reached the end of the content, add <EOF>.'
                         }
                     );
                 }
+
+                console.debug('Continuing conversation due to missing EOF. Messages:', messages);
+                currentResponse = '';
 
                 const continueResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
                     method: 'POST',
