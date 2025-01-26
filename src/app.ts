@@ -86,8 +86,7 @@ class ContentRetriever {
         let count = 1;
 
         try {
-            const fetchUrl = `/proxy?url=${encodeURIComponent(url)}`;
-            const response = await fetch(fetchUrl);
+            const response = await fetch(url);
             const text = await response.text();
             const links = this.extractLinks(url, text);
             
@@ -361,14 +360,24 @@ ${text}`
         this.visitedUrls.add(url);
 
         try {
-            const fetchUrl = `/proxy?url=${encodeURIComponent(url)}`;
-            const response = await fetch(fetchUrl, {
+            const proxyUrl = 'https://api.etdofresh.com/fetch_generated_html_from_url';
+            const response = await fetch(proxyUrl, {
+                method: 'POST',
                 headers: {
-                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
-                }
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ url: url })
             });
-            const text = await response.text();
-            
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(`Failed to fetch page: ${error.message || response.statusText}`);
+            }
+
+            const data = await response.json();
+            const text = data.html;
+            console.log('Proxy Response:', text);
+
             // Clean up the HTML content using Cheerio
             const $ = cheerio.load(text);
             
