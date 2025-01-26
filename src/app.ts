@@ -8,6 +8,7 @@ class ContentRetriever {
     private responseOutput: HTMLPreElement;
     private progressBar: HTMLProgressElement;
     private progressText: HTMLElement;
+    private progressContainer: HTMLElement;
     private visitedUrls: Set<string>;
     private totalPages: number;
     private downloadedPages: number;
@@ -19,6 +20,8 @@ class ContentRetriever {
         this.responseOutput = document.getElementById('responseOutput') as HTMLPreElement;
         this.progressBar = document.getElementById('downloadProgress') as HTMLProgressElement;
         this.progressText = document.getElementById('progressText') as HTMLElement;
+        this.progressContainer = document.getElementById('progress-container') as HTMLElement;
+        this.progressContainer.style.display = 'none';
         this.visitedUrls = new Set<string>();
         this.totalPages = 0;
         this.downloadedPages = 0;
@@ -81,6 +84,7 @@ class ContentRetriever {
         this.progressText.textContent = 'Preparing...';
         this.progressBar.value = 0;
         this.downloadedPages = 0;
+        this.progressContainer.style.display = 'block';
 
         try {
             // First count total pages
@@ -96,6 +100,7 @@ class ContentRetriever {
         } finally {
             this.retrieveButton.disabled = false;
             this.validateInput();
+            this.progressContainer.style.display = 'none';
         }
     }
 
