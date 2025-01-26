@@ -161,26 +161,12 @@ class ContentRetriever {
         this.markdownButton.textContent = 'Formatting...';
         this.markdownContainer.style.display = 'block';
         this.markdownOutput.textContent = 'Formatting content as markdown...';
-        
-        try {
-            if (!text.trim()) {
-                throw new Error('No content to format');
-            }
-            this.streamingIndicator.style.display = 'inline';
-            const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${apiKey}`,
-                    'HTTP-Referer': window.location.origin,
-                    'X-Title': 'Website Content Retriever'
-                },
-                body: JSON.stringify({
-                    model: 'google/gemini-2.0-flash-exp:free',
-                    messages: [
-                        {
-                            role: 'user',
-                            content: `
+
+        let currentResponse = ''; // Track the current response
+        const messages = [
+            {
+                role: 'user',
+                content: `
 **System/Instructions:**
 You are an expert at converting HTML into well-structured Markdown. When given HTML input, you will:
 
@@ -245,8 +231,25 @@ Another paragraph with an [Example Link](https://www.example.com).
 **User Input:**
 
 ${text}`
-                        }
-                    ],
+            }
+        ];
+        
+        try {
+            if (!text.trim()) {
+                throw new Error('No content to format');
+            }
+            this.streamingIndicator.style.display = 'inline';
+            const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`,
+                    'HTTP-Referer': window.location.origin,
+                    'X-Title': 'Website Content Retriever'
+                },
+                body: JSON.stringify({
+                    model: 'google/gemini-2.0-flash-exp:free',
+                    messages: messages,
                     stream: true,
                     temperature: 0.3,
                     max_tokens: 4000
@@ -268,64 +271,120 @@ ${text}`
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
             let buffer = '';
-            let responseCount = 0;
             let foundEOF = false;
 
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done || foundEOF || responseCount >= 10) break;
+            const processStream = async (streamReader: ReadableStreamDefaultReader<Uint8Array>) => {
+                let streamBuffer = '';
+                let streamFoundEOF = false;
 
-                buffer += decoder.decode(value, { stream: true });
-                const lines = buffer.split('\n');
-                buffer = lines.pop() || ''; // Keep the last partial line in buffer
+                while (true) {
+                    const { done, value } = await streamReader.read();
+                    if (done || streamFoundEOF) break;
 
-                for (const line of lines) {
-                    const trimmedLine = line.trim();
-                    if (!trimmedLine || trimmedLine === 'data: [DONE]') continue;
-                    if (trimmedLine.startsWith('data: ')) {
-                        try {
-                            const json = JSON.parse(trimmedLine.slice(6));
-                            if (json.choices?.[0]?.delta?.content) {
-                                const content = json.choices[0].delta.content;
-                                this.markdownOutput.textContent += content;
-                                
-                                // Check for EOF marker
-                                if (content.includes('<EOF>')) {
-                                    foundEOF = true;
-                                    // Remove the EOF marker from display
-                                    this.markdownOutput.textContent = this.markdownOutput.textContent.replace('<EOF>', '');
-                                    break;
+                    streamBuffer += decoder.decode(value, { stream: true });
+                    const lines = streamBuffer.split('\n');
+                    streamBuffer = lines.pop() || '';
+
+                    for (const line of lines) {
+                        const trimmedLine = line.trim();
+                        if (!trimmedLine || trimmedLine === 'data: [DONE]') continue;
+                        if (trimmedLine.startsWith('data: ')) {
+                            try {
+                                const json = JSON.parse(trimmedLine.slice(6));
+                                if (json.choices?.[0]?.delta?.content) {
+                                    const content = json.choices[0].delta.content;
+                                    const outputText = this.markdownOutput.textContent || '';
+                                    this.markdownOutput.textContent = outputText + content;
+                                    currentResponse = this.markdownOutput.textContent || '';
+                                    this.streamingIndicator.textContent = `streaming... (chars: ${currentResponse.length})`;
+                                    
+                                    if (content.includes('<EOF>')) {
+                                        streamFoundEOF = true;
+                                        const cleanedText = (this.markdownOutput.textContent || '').replace('<EOF>', '');
+                                        this.markdownOutput.textContent = cleanedText;
+                                        currentResponse = cleanedText;
+                                        break;
+                                    }
                                 }
+                            } catch (e) {
+                                console.debug('Failed to parse JSON:', trimmedLine);
                             }
-                        } catch (e) {
-                            console.debug('Failed to parse JSON:', trimmedLine);
-                        }
-                        responseCount++;
-                    }
-                }
-            }
-            
-            // Handle any remaining data in the buffer if we haven't found EOF
-            if (!foundEOF && buffer.trim()) {
-                try {
-                    const json = JSON.parse(buffer.replace('data: ', ''));
-                    if (json.choices?.[0]?.delta?.content) {
-                        const content = json.choices[0].delta.content;
-                        this.markdownOutput.textContent += content;
-                        
-                        // One final check for EOF
-                        if (content.includes('<EOF>')) {
-                            this.markdownOutput.textContent = this.markdownOutput.textContent.replace('<EOF>', '');
                         }
                     }
-                } catch (e) {
-                    console.debug('Failed to parse final buffer:', buffer);
                 }
-            }
 
-            // Add a note if we hit the response limit
-            if (responseCount >= 10 && !foundEOF) {
-                console.debug('Stream closed after 10 responses without finding EOF marker');
+                if (!streamFoundEOF && streamBuffer.trim()) {
+                    try {
+                        const json = JSON.parse(streamBuffer.replace('data: ', ''));
+                        if (json.choices?.[0]?.delta?.content) {
+                            const content = json.choices[0].delta.content;
+                            const outputText = this.markdownOutput.textContent || '';
+                            this.markdownOutput.textContent = outputText + content;
+                            currentResponse = this.markdownOutput.textContent || '';
+                            this.streamingIndicator.textContent = `streaming... (chars: ${currentResponse.length})`;
+                            
+                            if (content.includes('<EOF>')) {
+                                const cleanedText = (this.markdownOutput.textContent || '').replace('<EOF>', '');
+                                this.markdownOutput.textContent = cleanedText;
+                                currentResponse = cleanedText;
+                                streamFoundEOF = true;
+                            }
+                        }
+                    } catch (e) {
+                        console.debug('Failed to parse final buffer:', streamBuffer);
+                    }
+                }
+
+                return streamFoundEOF;
+            };
+
+            // Process initial response
+            foundEOF = await processStream(reader);
+
+            // If EOF not found, continue the conversation
+            while (!foundEOF) {
+                console.debug('Continuing conversation due to missing EOF');
+                
+                // Add a space before continuing to prevent words from running together
+                if (currentResponse) {
+                    this.markdownOutput.textContent = currentResponse + ' ';
+                    currentResponse = this.markdownOutput.textContent;
+                    
+                    messages.push(
+                        {
+                            role: 'assistant',
+                            content: currentResponse
+                        },
+                        {
+                            role: 'user',
+                            content: 'continue'
+                        }
+                    );
+                }
+
+                const continueResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${apiKey}`,
+                        'HTTP-Referer': window.location.origin,
+                        'X-Title': 'Website Content Retriever'
+                    },
+                    body: JSON.stringify({
+                        model: 'google/gemini-2.0-flash-exp:free',
+                        messages,
+                        stream: true,
+                        temperature: 0.3,
+                        max_tokens: 4000
+                    })
+                });
+
+                if (!continueResponse.ok || !continueResponse.body) {
+                    throw new Error('Failed to continue markdown response');
+                }
+
+                const continueReader = continueResponse.body.getReader();
+                foundEOF = await processStream(continueReader);
             }
         } catch (error) {
             console.error('Error formatting markdown:', error);
