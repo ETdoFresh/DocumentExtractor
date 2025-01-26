@@ -439,8 +439,10 @@ ${text}`
             if (href) {
                 try {
                     const url = new URL(href, baseUrl);
+                    // Remove hash/anchor part
+                    url.hash = '';
                     // Only include links from the same domain
-                    if (url.hostname === baseUrlObj.hostname && 
+                    if (url.hostname === baseUrlObj.hostname &&
                         !this.visitedUrls.has(url.href) &&
                         url.protocol.startsWith('http')) {
                         links.add(url.href);
