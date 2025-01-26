@@ -47,6 +47,43 @@
     cursor: not-allowed;
 }
 
+.progress-container {
+    margin-bottom: 1rem;
+    padding: 1rem;
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+}
+
+#progressText {
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+    color: #666;
+}
+
+#downloadProgress {
+    width: 100%;
+    height: 20px;
+    border-radius: 4px;
+    background-color: #e9ecef;
+    border: none;
+}
+
+#downloadProgress::-webkit-progress-bar {
+    background-color: #e9ecef;
+    border-radius: 4px;
+}
+
+#downloadProgress::-webkit-progress-value {
+    background-color: #007bff;
+    border-radius: 4px;
+}
+
+#downloadProgress::-moz-progress-bar {
+    background-color: #007bff;
+    border-radius: 4px;
+}
+
 .response-container {
     background-color: #f8f9fa;
     border: 1px solid #dee2e6;

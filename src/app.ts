@@ -6,16 +6,54 @@ class ContentRetriever {
     private recursionLimitSelect: HTMLSelectElement;
     private retrieveButton: HTMLButtonElement;
     private responseOutput: HTMLPreElement;
+    private progressBar: HTMLProgressElement;
+    private progressText: HTMLElement;
     private visitedUrls: Set<string>;
+    private totalPages: number;
+    private downloadedPages: number;
 
     constructor() {
         this.urlInput = document.getElementById('urlInput') as HTMLInputElement;
         this.recursionLimitSelect = document.getElementById('recursionLimit') as HTMLSelectElement;
         this.retrieveButton = document.getElementById('retrieveButton') as HTMLButtonElement;
         this.responseOutput = document.getElementById('responseOutput') as HTMLPreElement;
+        this.progressBar = document.getElementById('downloadProgress') as HTMLProgressElement;
+        this.progressText = document.getElementById('progressText') as HTMLElement;
         this.visitedUrls = new Set<string>();
+        this.totalPages = 0;
+        this.downloadedPages = 0;
         
         this.init();
+    }
+
+    private updateProgress(): void {
+        const percentage = this.totalPages ? Math.round((this.downloadedPages / this.totalPages) * 100) : 0;
+        this.progressBar.value = percentage;
+        this.progressText.textContent = `Downloaded ${this.downloadedPages} of ${this.totalPages} pages`;
+    }
+
+    private async countTotalPages(url: string, depth: number, visited = new Set<string>()): Promise<number> {
+        if (depth <= 0 || visited.has(url)) {
+            return 0;
+        }
+
+        visited.add(url);
+        let count = 1;
+
+        try {
+            const fetchUrl = `/proxy?url=${encodeURIComponent(url)}`;
+            const response = await fetch(fetchUrl);
+            const text = await response.text();
+            const links = this.extractLinks(url, text);
+            
+            for (const link of links) {
+                count += await this.countTotalPages(link, depth - 1, visited);
+            }
+        } catch (error) {
+            console.error(`Error counting pages at ${url}:`, error);
+        }
+
+        return count;
     }
 
     private init(): void {
@@ -39,9 +77,18 @@ class ContentRetriever {
         
         this.visitedUrls.clear();
         this.retrieveButton.disabled = true;
-        this.responseOutput.textContent = 'Loading...';
+        this.responseOutput.textContent = 'Calculating total pages...';
+        this.progressText.textContent = 'Preparing...';
+        this.progressBar.value = 0;
+        this.downloadedPages = 0;
 
         try {
+            // First count total pages
+            this.totalPages = await this.countTotalPages(inputUrl, maxDepth);
+            this.updateProgress();
+            
+            // Then start downloading
+            this.responseOutput.textContent = 'Downloading...';
             const result = await this.fetchRecursively(inputUrl, maxDepth);
             this.responseOutput.textContent = this.formatResults(result);
         } catch (error) {
@@ -70,6 +117,10 @@ class ContentRetriever {
             });
             const text = await response.text();
             results[url] = text;
+            
+            // Update progress after successful download
+            this.downloadedPages++;
+            this.updateProgress();
 
             // Extract and process links
             const links = this.extractLinks(url, text);
