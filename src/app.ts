@@ -3,6 +3,12 @@ import { crawl, fetchHtml } from './crawler';
 import { formatToMarkdown } from './markdownFormatter';
 import { copyToClipboard, debounce } from './utils';
 
+declare global {
+    interface Window {
+        __appInitialized?: boolean;
+    }
+}
+
 class App {
     private urlInput: HTMLInputElement;
     private depthSelect: HTMLSelectElement;
@@ -11,6 +17,12 @@ class App {
     private htmlOutputContainer: HTMLElement;
     private markdownOutputContainer: HTMLElement;
     private crawledResults: Map<string, string> = new Map();
+    private settingsButton: HTMLButtonElement;
+    private apiKeySection: HTMLElement;
+    private apiKeyInput: HTMLInputElement;
+    private saveApiKeyButton: HTMLButtonElement;
+    private lastChecked: HTMLInputElement | null = null;
+    private htmlItems: {url: string, html: string, container: HTMLElement}[] = [];
 
     constructor() {
         this.urlInput = document.getElementById('urlInput') as HTMLInputElement;
@@ -19,13 +31,48 @@ class App {
         this.urlsContainer = document.getElementById('urlsContainer') as HTMLElement;
         this.htmlOutputContainer = document.getElementById('htmlOutputContainer') as HTMLElement;
         this.markdownOutputContainer = document.getElementById('markdownOutputContainer') as HTMLElement;
+        
+        // Initialize settings elements
+        this.settingsButton = document.getElementById('settingsButton') as HTMLButtonElement;
+        this.apiKeySection = document.getElementById('apiKeySection') as HTMLElement;
+        this.apiKeyInput = document.getElementById('apiKeyInput') as HTMLInputElement;
+        this.saveApiKeyButton = document.getElementById('saveApiKey') as HTMLButtonElement;
 
-        this.init();
+        // Add event listeners
+        this.retrieveButton.addEventListener('click', () => this.handleRetrieve());
+        
+        // Settings click handler
+        this.settingsButton.addEventListener('click', () => {
+            this.toggleSettings();
+        });
+
+        // Initialize panel state
+        this.apiKeySection.style.display = 'none';
+        
+        this.saveApiKeyButton.addEventListener('click', () => this.saveApiKey());
+
+        // Load saved API key on startup
+        this.loadApiKey();
     }
 
-    private init() {
-        this.retrieveButton.addEventListener('click', () => this.handleRetrieve());
-        // Add event listeners for other buttons (copy, format, etc.) here
+    private toggleSettings(): void {
+        const isVisible = window.getComputedStyle(this.apiKeySection).display !== 'none';
+        this.apiKeySection.style.display = isVisible ? 'none' : 'block';
+    }
+
+    private loadApiKey(): void {
+        const savedApiKey = localStorage.getItem('openRouterApiKey');
+        if (savedApiKey) {
+            this.apiKeyInput.value = savedApiKey;
+        }
+    }
+
+    private saveApiKey(): void {
+        const apiKey = this.apiKeyInput.value.trim();
+        if (apiKey) {
+            localStorage.setItem('openRouterApiKey', apiKey);
+            this.apiKeySection.style.display = 'none';
+        }
     }
 
     private async handleRetrieve() {
@@ -48,13 +95,10 @@ class App {
         }
     }
 
-    private lastChecked: HTMLInputElement | null = null;
-
     private displayUrlCheckboxes(urls: string[]) {
         this.urlsContainer.innerHTML = '';
         this.lastChecked = null;
 
-        // Create Select All / Deselect All buttons
         const buttonContainer = document.createElement('div');
         buttonContainer.className = 'button-container';
 
@@ -66,20 +110,16 @@ class App {
         deselectAllButton.textContent = 'Deselect All';
         deselectAllButton.addEventListener('click', () => this.toggleAllCheckboxes(false));
 
-        // Append select/deselect buttons
         buttonContainer.append(selectAllButton, deselectAllButton);
         this.urlsContainer.appendChild(buttonContainer);
 
-        // Create an ordered list of checkboxes
         const list = document.createElement('ol');
-
-        // Create "Output HTML" button (moved below checkboxes)
         const outputHtmlButton = document.createElement('button');
         outputHtmlButton.textContent = 'Output HTML';
         outputHtmlButton.addEventListener('click', () => this.downloadSelectedHtml());
+        
         urls.forEach(url => {
             const listItem = document.createElement('li');
-            
             const checkbox = document.createElement('input');
             checkbox.type = 'checkbox';
             checkbox.checked = true;
@@ -124,32 +164,17 @@ class App {
         });
     }
 
-    private async handleFormat(html: string, options = {}) {
-        try {
-            const markdown = await formatToMarkdown(html, options);
-            this.markdownOutputContainer.textContent = markdown;
-        } catch (error) {
-            this.markdownOutputContainer.textContent = `Error formatting markdown: ${error instanceof Error ? error.message : String(error)}`;
-        }
-    }
-
-    private htmlItems: {url: string, html: string, container: HTMLElement}[] = [];
-
     private async downloadSelectedHtml(): Promise<void> {
-        // Clear existing content
         this.htmlOutputContainer.innerHTML = '';
         this.htmlItems = [];
         this.retrieveButton.disabled = true;
         this.retrieveButton.textContent = 'Downloading...';
 
-        // Find all checked checkboxes
         const checkboxes = this.urlsContainer.querySelectorAll('input[type="checkbox"]:checked');
-        
-        // Create containers first
         const containers: {url: string, container: HTMLElement}[] = [];
+        
         checkboxes.forEach((checkbox) => {
             const url = (checkbox as HTMLInputElement).value;
-            
             const container = document.createElement('div');
             container.className = 'html-output-item';
             
@@ -166,11 +191,10 @@ class App {
             containers.push({url, container});
         });
 
-        // Download HTML for each URL in parallel
-        const downloadPromises = containers.map(async ({url, container}) => {
+        await Promise.all(containers.map(async ({url, container}) => {
             try {
                 const html = await fetchHtml(url);
-                container.innerHTML = ''; // Clear loading message
+                container.innerHTML = '';
                 
                 const heading = document.createElement('h3');
                 heading.textContent = url;
@@ -185,22 +209,16 @@ class App {
 
                 this.htmlItems.push({url, html, container});
             } catch (error) {
-                container.innerHTML = ''; // Clear loading message
+                container.innerHTML = '';
+                container.appendChild(document.createElement('h3')).textContent = url;
                 
-                const heading = document.createElement('h3');
-                heading.textContent = url;
-                container.appendChild(heading);
-
                 const errorMsg = document.createElement('p');
                 errorMsg.textContent = `Error downloading HTML: ${error instanceof Error ? error.message : String(error)}`;
                 errorMsg.style.color = 'red';
                 container.appendChild(errorMsg);
             }
-        });
+        }));
 
-        await Promise.all(downloadPromises);
-
-        // Add buttons if we have HTML items
         if (this.htmlItems.length > 0) {
             const buttonContainer = document.createElement('div');
             buttonContainer.className = 'button-container';
@@ -226,7 +244,6 @@ class App {
     private async handleFormatAll() {
         this.markdownOutputContainer.innerHTML = '';
         
-        // Create all containers first
         const containers = this.htmlItems.map(item => {
             const mdContainer = document.createElement('div');
             mdContainer.className = 'markdown-output-item';
@@ -234,17 +251,16 @@ class App {
             const heading = document.createElement('h3');
             heading.textContent = item.url;
             mdContainer.appendChild(heading);
-            
+
             const loading = document.createElement('p');
             loading.textContent = 'Formatting to markdown...';
             loading.style.color = '#666';
             mdContainer.appendChild(loading);
-            
+
             this.markdownOutputContainer.appendChild(mdContainer);
             return { container: mdContainer, item };
         });
 
-        // Process all items in parallel
         await Promise.all(containers.map(async ({container, item}) => {
             try {
                 const textarea = document.createElement('textarea');
@@ -252,12 +268,10 @@ class App {
                 textarea.style.width = '100%';
                 textarea.style.height = '300px';
                 
-                // Clear loading message and add textarea
                 container.innerHTML = '';
                 container.appendChild(document.createElement('h3')).textContent = item.url;
                 container.appendChild(textarea);
                 
-                // Stream markdown conversion
                 await this.streamMarkdownConversion(item.html, textarea);
             } catch (error) {
                 container.innerHTML = '';
@@ -270,7 +284,6 @@ class App {
             }
         }));
 
-        // Add Copy ALL Markdown button
         if (this.htmlItems.length > 0) {
             const copyButton = document.createElement('button');
             copyButton.className = 'copy-button';
@@ -281,8 +294,6 @@ class App {
     }
 
     private async streamMarkdownConversion(html: string, output: HTMLTextAreaElement) {
-        // TODO: Implement actual streaming from LLM
-        // For now just do immediate conversion
         const markdown = await formatToMarkdown(html);
         output.value = markdown;
     }
@@ -303,4 +314,23 @@ class App {
     }
 }
 
-document.addEventListener('DOMContentLoaded', () => new App());
+// Singleton initialization guard
+if (!window.__appInitialized) {
+    window.__appInitialized = true;
+    
+    // Handle DOM ready state
+    const initApp = () => {
+        if (document.readyState === 'complete') {
+            new App();
+        } else {
+            document.addEventListener('readystatechange', () => {
+                if (document.readyState === 'complete') {
+                    new App();
+                }
+            });
+        }
+    };
+
+    // Start initialization
+    initApp();
+}
