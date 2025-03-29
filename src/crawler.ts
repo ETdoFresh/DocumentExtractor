@@ -45,24 +45,40 @@ export function extractLinks(baseUrl: string, html: string): string[] {
 /**
  * Recursively crawl the given URL to the specified depth.
  * Returns a Map of URL to its fetched HTML content.
+ *
+ * For depth > 1, recursively fetch content.
+ * For depth === 1, fetch the starting URL but only list its links without downloading them.
  */
 export async function crawl(
-    url: string, 
-    depth: number, 
+    url: string,
+    depth: number,
     visited = new Set<string>()
 ): Promise<Map<string, string>> {
     const results = new Map<string, string>();
-    if (depth <= 0 || visited.has(url)) return results;
-    
+    if (depth < 0 || visited.has(url)) return results;
+
     visited.add(url);
     try {
+        // Always fetch the content for the starting URL
         const html = await fetchHtml(url);
         results.set(url, html);
-        const links = extractLinks(url, html);
-        
-        for (const link of links) {
-            const subResults = await crawl(link, depth - 1, visited);
-            subResults.forEach((value, key) => results.set(key, value));
+
+        if (depth > 1) {
+            // Recursively fetch child pages
+            const links = extractLinks(url, html);
+            for (const link of links) {
+                const subResults = await crawl(link, depth - 1, visited);
+                subResults.forEach((value, key) => results.set(key, value));
+            }
+        } else if (depth === 1) {
+            // For depth 1, only extract links but do not download their content.
+            const links = extractLinks(url, html);
+            for (const link of links) {
+                if (!visited.has(link)) {
+                    results.set(link, ''); // Mark as not downloaded
+                    visited.add(link);
+                }
+            }
         }
     } catch (error) {
         console.error(`Error crawling ${url}:`, error);

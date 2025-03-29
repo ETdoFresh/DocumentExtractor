@@ -48,8 +48,11 @@ class App {
         }
     }
 
+    private lastChecked: HTMLInputElement | null = null;
+
     private displayUrlCheckboxes(urls: string[]) {
         this.urlsContainer.innerHTML = '';
+        this.lastChecked = null;
 
         // Create Select All / Deselect All buttons
         const buttonContainer = document.createElement('div');
@@ -63,17 +66,17 @@ class App {
         deselectAllButton.textContent = 'Deselect All';
         deselectAllButton.addEventListener('click', () => this.toggleAllCheckboxes(false));
 
-        // NEW: Create a "Download HTML" button
-        const downloadHtmlButton = document.createElement('button');
-        downloadHtmlButton.textContent = 'Download HTML';
-        downloadHtmlButton.addEventListener('click', () => this.downloadSelectedHtml());
-
-        // Append all three buttons
-        buttonContainer.append(selectAllButton, deselectAllButton, downloadHtmlButton);
+        // Append select/deselect buttons
+        buttonContainer.append(selectAllButton, deselectAllButton);
         this.urlsContainer.appendChild(buttonContainer);
 
         // Create an ordered list of checkboxes
         const list = document.createElement('ol');
+
+        // Create "Output HTML" button (moved below checkboxes)
+        const outputHtmlButton = document.createElement('button');
+        outputHtmlButton.textContent = 'Output HTML';
+        outputHtmlButton.addEventListener('click', () => this.downloadSelectedHtml());
         urls.forEach(url => {
             const listItem = document.createElement('li');
             
@@ -82,6 +85,7 @@ class App {
             checkbox.checked = true;
             checkbox.value = url;
             checkbox.id = `url-${urls.indexOf(url)}`;
+            checkbox.addEventListener('click', (e) => this.handleCheckboxClick(e, checkbox));
             
             const label = document.createElement('label');
             label.htmlFor = checkbox.id;
@@ -92,6 +96,25 @@ class App {
         });
 
         this.urlsContainer.appendChild(list);
+        this.urlsContainer.appendChild(outputHtmlButton);
+    }
+
+    private handleCheckboxClick(e: MouseEvent, checkbox: HTMLInputElement) {
+        if (e.shiftKey && this.lastChecked) {
+            const checkboxes = Array.from(
+                this.urlsContainer.querySelectorAll('input[type="checkbox"]')
+            ) as HTMLInputElement[];
+            
+            const startIdx = checkboxes.indexOf(this.lastChecked);
+            const endIdx = checkboxes.indexOf(checkbox);
+            const [from, to] = [Math.min(startIdx, endIdx), Math.max(startIdx, endIdx)];
+            
+            const isChecked = checkbox.checked;
+            for (let i = from; i <= to; i++) {
+                checkboxes[i].checked = isChecked;
+            }
+        }
+        this.lastChecked = checkbox;
     }
 
     private toggleAllCheckboxes(checked: boolean) {
