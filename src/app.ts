@@ -63,7 +63,13 @@ class App {
         deselectAllButton.textContent = 'Deselect All';
         deselectAllButton.addEventListener('click', () => this.toggleAllCheckboxes(false));
 
-        buttonContainer.append(selectAllButton, deselectAllButton);
+        // NEW: Create a "Download HTML" button
+        const downloadHtmlButton = document.createElement('button');
+        downloadHtmlButton.textContent = 'Download HTML';
+        downloadHtmlButton.addEventListener('click', () => this.downloadSelectedHtml());
+
+        // Append all three buttons
+        buttonContainer.append(selectAllButton, deselectAllButton, downloadHtmlButton);
         this.urlsContainer.appendChild(buttonContainer);
 
         // Create an ordered list of checkboxes
@@ -102,6 +108,83 @@ class App {
         } catch (error) {
             this.markdownOutputContainer.textContent = `Error formatting markdown: ${error instanceof Error ? error.message : String(error)}`;
         }
+    }
+
+    private htmlItems: {url: string, html: string, container: HTMLElement}[] = [];
+
+    private downloadSelectedHtml(): void {
+        // Clear existing content
+        this.htmlOutputContainer.innerHTML = '';
+        this.htmlItems = [];
+
+        // Find all checked checkboxes
+        const checkboxes = this.urlsContainer.querySelectorAll('input[type="checkbox"]:checked');
+        checkboxes.forEach((checkbox) => {
+            const url = (checkbox as HTMLInputElement).value;
+            const htmlContent = this.crawledResults.get(url);
+            if (htmlContent) {
+                // Create a container for this HTML
+                const container = document.createElement('div');
+                container.className = 'html-output-item';
+                
+                // Add URL as heading
+                const heading = document.createElement('h3');
+                heading.textContent = url;
+                container.appendChild(heading);
+                
+                // Add HTML in a textarea
+                const textarea = document.createElement('textarea');
+                textarea.value = htmlContent;
+                textarea.readOnly = true;
+                textarea.style.width = '100%';
+                textarea.style.height = '300px';
+                container.appendChild(textarea);
+                
+                this.htmlOutputContainer.appendChild(container);
+                this.htmlItems.push({url, html: htmlContent, container});
+            }
+        });
+
+        // Add Format to Markdown button if we have HTML items
+        if (this.htmlItems.length > 0) {
+            const formatButton = document.createElement('button');
+            formatButton.className = 'format-button';
+            formatButton.textContent = 'Format to Markdown';
+            formatButton.addEventListener('click', () => this.handleFormatAll());
+            this.htmlOutputContainer.appendChild(formatButton);
+        }
+    }
+
+    private async handleFormatAll() {
+        this.markdownOutputContainer.innerHTML = '';
+        
+        for (const item of this.htmlItems) {
+            // Create markdown container for this item
+            const mdContainer = document.createElement('div');
+            mdContainer.className = 'markdown-output-item';
+            
+            const heading = document.createElement('h3');
+            heading.textContent = item.url;
+            mdContainer.appendChild(heading);
+            
+            const textarea = document.createElement('textarea');
+            textarea.readOnly = true;
+            textarea.style.width = '100%';
+            textarea.style.height = '300px';
+            mdContainer.appendChild(textarea);
+            
+            this.markdownOutputContainer.appendChild(mdContainer);
+            
+            // Stream markdown conversion
+            await this.streamMarkdownConversion(item.html, textarea);
+        }
+    }
+
+    private async streamMarkdownConversion(html: string, output: HTMLTextAreaElement) {
+        // TODO: Implement actual streaming from LLM
+        // For now just do immediate conversion
+        const markdown = await formatToMarkdown(html);
+        output.value = markdown;
     }
 }
 

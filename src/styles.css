@@ -64,16 +64,36 @@ button:hover {
 
 .output-section {
     display: flex;
+    flex-direction: column;
     gap: 20px;
 }
 
 .output-container {
-    flex: 1;
+    width: 100%;
     border: 1px solid #ddd;
     padding: 15px;
     border-radius: 4px;
     background-color: #f9f9f9;
     min-height: 300px;
+}
+
+.html-output-item {
+    margin-bottom: 20px;
+}
+
+.html-output-item h3 {
+    margin-top: 0;
+    color: #333;
+}
+
+.format-button {
+    margin: 20px 0;
+    padding: 10px 15px;
+    background-color: #2196F3;
+}
+
+.format-button:hover {
+    background-color: #0b7dda;
 }
 
 .output-container h2 {

@@ -40,7 +40,28 @@ export async function formatToMarkdown(
             model: 'google/gemini-2.0-flash-exp:free',
             messages: [{
                 role: 'user',
-                content: `Convert the following HTML to Markdown:\n${processedHtml}\n<EOF>`
+                content: `Convert the following HTML to Markdown. 
+                Here are some rules:
+                1. Preserve the structure and formatting of the original content as much as possible.
+                2. Do not include href to any local links, only external links are allowed.
+                3. Do not include \`\`\` or any other code block formatting, just plain text.
+
+                For example:
+                Do not include any of the following:
+                [Architecture](architecture)
+                [Base Protocol](basic)
+                [Server Features](server)
+                [Client Features](client)
+                [Contributing](contributing)
+
+                The following are OK:
+                [#Implementation Guidelines](#implementation-guidelines)
+                [#Learn More](#learn-more)
+                [#Key Details](#key-details)
+                [RFC2119](https://datatracker.ietf.org/doc/html/rfc2119)
+                [modelcontextprotocol.io](https://modelcontextprotocol.io)
+
+                \n${processedHtml}\n<EOF>`
             }],
             stream: false,
             temperature: 0.3,
