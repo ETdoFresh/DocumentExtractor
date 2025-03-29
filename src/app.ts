@@ -200,13 +200,23 @@ class App {
 
         await Promise.all(downloadPromises);
 
-        // Add Format to Markdown button if we have HTML items
+        // Add buttons if we have HTML items
         if (this.htmlItems.length > 0) {
+            const buttonContainer = document.createElement('div');
+            buttonContainer.className = 'button-container';
+            
             const formatButton = document.createElement('button');
             formatButton.className = 'format-button';
             formatButton.textContent = 'Format to Markdown';
             formatButton.addEventListener('click', () => this.handleFormatAll());
-            this.htmlOutputContainer.appendChild(formatButton);
+            
+            const copyHtmlButton = document.createElement('button');
+            copyHtmlButton.className = 'copy-button';
+            copyHtmlButton.textContent = 'Copy ALL HTML to Clipboard';
+            copyHtmlButton.addEventListener('click', () => this.copyAllHtmlToClipboard());
+            
+            buttonContainer.append(formatButton, copyHtmlButton);
+            this.htmlOutputContainer.appendChild(buttonContainer);
         }
 
         this.retrieveButton.disabled = false;
@@ -216,8 +226,8 @@ class App {
     private async handleFormatAll() {
         this.markdownOutputContainer.innerHTML = '';
         
-        for (const item of this.htmlItems) {
-            // Create markdown container for this item
+        // Create all containers first
+        const containers = this.htmlItems.map(item => {
             const mdContainer = document.createElement('div');
             mdContainer.className = 'markdown-output-item';
             
@@ -225,16 +235,48 @@ class App {
             heading.textContent = item.url;
             mdContainer.appendChild(heading);
             
-            const textarea = document.createElement('textarea');
-            textarea.readOnly = true;
-            textarea.style.width = '100%';
-            textarea.style.height = '300px';
-            mdContainer.appendChild(textarea);
+            const loading = document.createElement('p');
+            loading.textContent = 'Formatting to markdown...';
+            loading.style.color = '#666';
+            mdContainer.appendChild(loading);
             
             this.markdownOutputContainer.appendChild(mdContainer);
-            
-            // Stream markdown conversion
-            await this.streamMarkdownConversion(item.html, textarea);
+            return { container: mdContainer, item };
+        });
+
+        // Process all items in parallel
+        await Promise.all(containers.map(async ({container, item}) => {
+            try {
+                const textarea = document.createElement('textarea');
+                textarea.readOnly = true;
+                textarea.style.width = '100%';
+                textarea.style.height = '300px';
+                
+                // Clear loading message and add textarea
+                container.innerHTML = '';
+                container.appendChild(document.createElement('h3')).textContent = item.url;
+                container.appendChild(textarea);
+                
+                // Stream markdown conversion
+                await this.streamMarkdownConversion(item.html, textarea);
+            } catch (error) {
+                container.innerHTML = '';
+                container.appendChild(document.createElement('h3')).textContent = item.url;
+                
+                const errorMsg = document.createElement('p');
+                errorMsg.textContent = `Error formatting: ${error instanceof Error ? error.message : String(error)}`;
+                errorMsg.style.color = 'red';
+                container.appendChild(errorMsg);
+            }
+        }));
+
+        // Add Copy ALL Markdown button
+        if (this.htmlItems.length > 0) {
+            const copyButton = document.createElement('button');
+            copyButton.className = 'copy-button';
+            copyButton.textContent = 'Copy ALL Markdown to Clipboard';
+            copyButton.addEventListener('click', () => this.copyAllMarkdownToClipboard());
+            this.markdownOutputContainer.appendChild(copyButton);
         }
     }
 
@@ -243,6 +285,21 @@ class App {
         // For now just do immediate conversion
         const markdown = await formatToMarkdown(html);
         output.value = markdown;
+    }
+
+    private copyAllHtmlToClipboard() {
+        const allContent = this.htmlItems.map(item =>
+            `=== ${item.url} ===\n\n${item.html}\n\n`
+        ).join('\n');
+        copyToClipboard(allContent);
+    }
+
+    private copyAllMarkdownToClipboard() {
+        const textareas = this.markdownOutputContainer.querySelectorAll('textarea');
+        const allContent = Array.from(textareas).map((textarea, i) =>
+            `=== ${this.htmlItems[i]?.url || 'Unknown URL'} ===\n\n${textarea.value}\n\n`
+        ).join('\n');
+        copyToClipboard(allContent);
     }
 }
 
