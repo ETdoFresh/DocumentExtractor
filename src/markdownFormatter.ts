@@ -3,16 +3,33 @@ interface FormatterOptions {
     imageToText?: boolean;
 }
 
+const MAX_CONCURRENT_REQUESTS = 3;
+let activeRequestCount = 0;
+const requestQueue: Array<{
+    html: string;
+    options: FormatterOptions;
+    resolve: (value: string) => void;
+    reject: (reason?: any) => void;
+}> = [];
+
 /**
  * Convert HTML to Markdown using an external LLM API.
  */
 export async function formatToMarkdown(
-    html: string, 
+    html: string,
     options: FormatterOptions = {}
 ): Promise<string> {
-    let processedHtml = html;
+    if (activeRequestCount >= MAX_CONCURRENT_REQUESTS) {
+        return new Promise((resolve, reject) => {
+            requestQueue.push({ html, options, resolve, reject });
+        });
+    }
 
-    if (options.includeImages) {
+    activeRequestCount++;
+    try {
+        let processedHtml = html;
+
+        if (options.includeImages) {
         // Replace image src links with generated local file names
         processedHtml = processedHtml.replace(
             /<img\s+[^>]*src="([^"]+)"[^>]*>/gi, 
@@ -23,13 +40,13 @@ export async function formatToMarkdown(
         );
     }
 
-    if (options.imageToText) {
+        if (options.imageToText) {
         // Replace images with a placeholder block
         processedHtml = await convertImagesToText(processedHtml);
     }
 
-    // Prepare the request to the LLM API
-    const apiKey = localStorage.getItem('openRouterApiKey');
+        // Prepare the request to the LLM API
+        const apiKey = localStorage.getItem('openRouterApiKey');
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -69,12 +86,26 @@ export async function formatToMarkdown(
         })
     });
 
-    if (!response.ok) {
+        if (!response.ok) {
         throw new Error(`Markdown formatting failed: ${response.statusText}`);
     }
 
-    const data = await response.json();
-    return data.choices[0].message.content.replace('<EOF>', '').trim();
+        const data = await response.json();
+        const result = data.choices[0].message.content.replace('<EOF>', '').trim();
+        
+        return result;
+    } catch (error) {
+        throw error;
+    } finally {
+        // Process next in queue if available
+        activeRequestCount--;
+        if (requestQueue.length > 0) {
+            const nextRequest = requestQueue.shift()!;
+            formatToMarkdown(nextRequest.html, nextRequest.options)
+                .then(nextRequest.resolve)
+                .catch(nextRequest.reject);
+        }
+    }
 }
 
 function generateLocalImageName(src: string): string {
