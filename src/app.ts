@@ -1,5 +1,5 @@
 import './styles.css';
-import { crawl } from './crawler';
+import { crawl, fetchHtml } from './crawler';
 import { formatToMarkdown } from './markdownFormatter';
 import { copyToClipboard, debounce } from './utils';
 
@@ -135,38 +135,70 @@ class App {
 
     private htmlItems: {url: string, html: string, container: HTMLElement}[] = [];
 
-    private downloadSelectedHtml(): void {
+    private async downloadSelectedHtml(): Promise<void> {
         // Clear existing content
         this.htmlOutputContainer.innerHTML = '';
         this.htmlItems = [];
+        this.retrieveButton.disabled = true;
+        this.retrieveButton.textContent = 'Downloading...';
 
         // Find all checked checkboxes
         const checkboxes = this.urlsContainer.querySelectorAll('input[type="checkbox"]:checked');
+        
+        // Create containers first
+        const containers: {url: string, container: HTMLElement}[] = [];
         checkboxes.forEach((checkbox) => {
             const url = (checkbox as HTMLInputElement).value;
-            const htmlContent = this.crawledResults.get(url);
-            if (htmlContent) {
-                // Create a container for this HTML
-                const container = document.createElement('div');
-                container.className = 'html-output-item';
+            
+            const container = document.createElement('div');
+            container.className = 'html-output-item';
+            
+            const heading = document.createElement('h3');
+            heading.textContent = url;
+            container.appendChild(heading);
+
+            const loading = document.createElement('p');
+            loading.textContent = 'Downloading HTML...';
+            loading.style.color = '#666';
+            container.appendChild(loading);
+
+            this.htmlOutputContainer.appendChild(container);
+            containers.push({url, container});
+        });
+
+        // Download HTML for each URL in parallel
+        const downloadPromises = containers.map(async ({url, container}) => {
+            try {
+                const html = await fetchHtml(url);
+                container.innerHTML = ''; // Clear loading message
                 
-                // Add URL as heading
                 const heading = document.createElement('h3');
                 heading.textContent = url;
                 container.appendChild(heading);
-                
-                // Add HTML in a textarea
+
                 const textarea = document.createElement('textarea');
-                textarea.value = htmlContent;
+                textarea.value = html;
                 textarea.readOnly = true;
                 textarea.style.width = '100%';
                 textarea.style.height = '300px';
                 container.appendChild(textarea);
+
+                this.htmlItems.push({url, html, container});
+            } catch (error) {
+                container.innerHTML = ''; // Clear loading message
                 
-                this.htmlOutputContainer.appendChild(container);
-                this.htmlItems.push({url, html: htmlContent, container});
+                const heading = document.createElement('h3');
+                heading.textContent = url;
+                container.appendChild(heading);
+
+                const errorMsg = document.createElement('p');
+                errorMsg.textContent = `Error downloading HTML: ${error instanceof Error ? error.message : String(error)}`;
+                errorMsg.style.color = 'red';
+                container.appendChild(errorMsg);
             }
         });
+
+        await Promise.all(downloadPromises);
 
         // Add Format to Markdown button if we have HTML items
         if (this.htmlItems.length > 0) {
@@ -176,6 +208,9 @@ class App {
             formatButton.addEventListener('click', () => this.handleFormatAll());
             this.htmlOutputContainer.appendChild(formatButton);
         }
+
+        this.retrieveButton.disabled = false;
+        this.retrieveButton.textContent = 'Retrieve';
     }
 
     private async handleFormatAll() {
