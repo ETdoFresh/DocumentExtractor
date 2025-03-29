@@ -1,26 +1,26 @@
 {
-  "name": "website-content-retriever",
+  "name": "documentextractor",
   "version": "1.0.0",
-  "description": "A simple website content retriever",
+  "description": "Website Crawler & Markdown Formatter",
+  "main": "index.js",
   "scripts": {
+    "dev": "webpack serve --mode development",
     "build": "webpack --mode production",
-    "start": "webpack serve --mode development",
-    "dev": "webpack serve --mode development --open --hot",
-    "watch": "webpack --watch --mode development"
+    "start": "webpack serve --mode production",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
   "devDependencies": {
-    "@types/puppeteer": "^7.0.4",
-    "css-loader": "^6.9.1",
+    "css-loader": "^7.1.2",
     "html-webpack-plugin": "^5.6.0",
-    "style-loader": "^3.3.4",
+    "style-loader": "^4.0.0",
     "ts-loader": "^9.5.1",
     "typescript": "^5.3.3",
-    "webpack": "^5.90.0",
+    "webpack": "^5.89.0",
     "webpack-cli": "^5.1.4",
     "webpack-dev-server": "^4.15.1"
-  },
-  "dependencies": {
-    "cheerio": "^1.0.0",
-    "puppeteer": "^24.1.1"
   }
 }

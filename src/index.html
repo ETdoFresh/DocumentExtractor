@@ -3,62 +3,36 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Website Content Retriever</title>
+    <title>Website Crawler & Markdown Formatter</title>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <div class="container">
-        <div class="header">
-            <h1>Website Content Retriever</h1>
-            <button id="settingsButton" class="settings-button">⚙️</button>
+        <h1>Website Crawler & Markdown Formatter</h1>
+        
+        <div class="input-section">
+            <input type="text" id="urlInput" placeholder="Enter starting URL">
+            <select id="recursionLimit">
+                <option value="1">1 level deep</option>
+                <option value="2">2 levels deep</option>
+                <option value="3">3 levels deep</option>
+            </select>
+            <button id="retrieveButton">Retrieve</button>
         </div>
-        <div id="apiKeySection" class="api-key-section" style="display: none;">
-            <div class="api-key-container">
-                <input type="password" id="apiKeyInput" placeholder="Enter OpenRouter API Key" />
-                <button id="saveApiKey">Save</button>
+
+        <div id="urlsContainer"></div>
+
+        <div class="output-section">
+            <div class="output-container">
+                <h2>HTML Output</h2>
+                <div id="htmlOutputContainer"></div>
             </div>
-        </div>
-        <div class="input-group">
-            <div>
-                <input type="url" id="urlInput" placeholder="Enter URL (e.g., https://example.com)" />
-                <button id="retrieveButton">Retrieve</button>
+            <div class="output-container">
+                <h2>Markdown Output</h2>
+                <div id="markdownOutputContainer"></div>
             </div>
-            <div class="options-group">
-                <select id="recursionLimit" title="Maximum depth for recursive link extraction">
-                    <option value="1">1 level deep</option>
-                    <option value="2" selected>2 levels deep</option>
-                    <option value="3">3 levels deep</option>
-                    <option value="4">4 levels deep</option>
-                    <option value="5">5 levels deep</option>
-                </select>
-                <div class="checkbox-group">
-                    <input type="checkbox" id="samePath" checked>
-                    <label for="samePath">Only download pages in same folder</label>
-                </div>
-            </div>
-        </div>
-        <div id="progress-container" class="progress-container">
-            <div id="progressText"></div>
-            <progress id="downloadProgress" value="0" max="100"></progress>
-        </div>
-        <div class="response-container">
-            <div class="response-header">
-                <h2>Response:</h2>
-                <div class="response-actions">
-                    <button id="copyButton" class="action-button">Copy</button>
-                    <button id="markdownButton" class="action-button">Markdown Format</button>
-                </div>
-            </div>
-            <pre id="responseOutput"></pre>
-        </div>
-        <div id="markdownContainer" class="response-container" style="display: none;">
-            <div class="response-header">
-                <h2>Markdown Response:<span id="streamingIndicator" class="streaming-indicator">(streaming...)</span></h2>
-                <div class="response-actions">
-                    <button id="copyMarkdownButton" class="action-button">Copy</button>
-                </div>
-            </div>
-            <pre id="markdownOutput"></pre>
         </div>
     </div>
+    <script src="bundle.js"></script>
 </body>
 </html>

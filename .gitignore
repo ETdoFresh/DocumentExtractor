@@ -1,2 +1,20 @@
+# Dependencies
 node_modules/
+
+# Build artifacts
 dist/
+*.js
+*.js.map
+
+# Environment variables
+.env
+.env.local
+
+# Editor directories and files
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

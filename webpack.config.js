@@ -3,6 +3,12 @@ const HtmlWebpackPlugin = require('html-webpack-plugin');
 
 module.exports = {
   entry: './src/app.ts',
+  mode: 'development',
+  devtool: 'inline-source-map',
+  devServer: {
+    static: './dist',
+    hot: true,
+  },
   module: {
     rules: [
       {
@@ -22,33 +28,11 @@ module.exports = {
   output: {
     filename: 'bundle.js',
     path: path.resolve(__dirname, 'dist'),
+    clean: true,
   },
   plugins: [
     new HtmlWebpackPlugin({
-      template: 'src/index.html',
+      template: './src/index.html',
     }),
   ],
-  devServer: {
-    static: {
-      directory: path.join(__dirname, 'dist'),
-    },
-    compress: true,
-    port: 8080,
-    hot: true, // Enable hot module replacement
-    client: {
-      overlay: {
-        errors: true,
-        warnings: false,
-      },
-      progress: true,
-      reconnect: true, // Enable auto reconnection
-    },
-    devMiddleware: {
-      writeToDisk: true, // Write files to disk in dev mode
-    },
-    watchFiles: ['src/**/*'], // Watch all files in src directory
-    liveReload: true, // Enable live reload
-  },
-  // Enable source maps for better debugging
-  devtool: 'eval-source-map',
 };
