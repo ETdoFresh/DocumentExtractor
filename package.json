@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "webpack serve --mode development",
     "build": "webpack --mode production",
-    "start": "webpack serve --mode production --allowed-hosts documentextractor.etdofresh.com",
+    "start": "http-server dist -p 8080 -a 0.0.0.0",
+    "serve": "webpack serve --mode production --allowed-hosts documentextractor.etdofresh.com",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -22,5 +23,8 @@
     "webpack": "^5.89.0",
     "webpack-cli": "^5.1.4",
     "webpack-dev-server": "^4.15.1"
+  },
+  "dependencies": {
+    "http-server": "^14.1.1"
   }
 }
