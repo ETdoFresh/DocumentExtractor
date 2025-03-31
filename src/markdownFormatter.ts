@@ -84,20 +84,21 @@ export async function formatToMarkdown(
                     messages: [{
                         role: 'user',
                         content: `Convert the following HTML to Markdown. 
-                        Here are some rules:
+                        Here are the rules:
                         1. Preserve the structure and formatting of the original content as much as possible.
                         2. Do not include href to any local links, only external links are allowed.
-                        3. Do not include \`\`\` or any other code block formatting, just plain text.
-
-                        For example:
-                        Do not include any of the following:
+                        3. Do not include \`\`\`markdown wrapper around the overall content.
+                        4. Do not include any raw/encoded html tags in output.
+                        5. The output must be in markdown format without prefixing with \`\`\`markdown or \`\`\`text.
+                        
+                        6. Do not include any of the following:
                         [Architecture](architecture)
                         [Base Protocol](basic)
                         [Server Features](server)
                         [Client Features](client)
                         [Contributing](contributing)
 
-                        The following are OK:
+                        7. The following are OK:
                         [#Implementation Guidelines](#implementation-guidelines)
                         [#Learn More](#learn-more)
                         [#Key Details](#key-details)
