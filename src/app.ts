@@ -1,5 +1,5 @@
 import './styles.css';
-import { crawl, fetchHtml } from './crawler';
+import { crawl, fetchHtml, extractContent } from './crawler';
 import { formatToMarkdown } from './markdownFormatter';
 import { copyToClipboard, debounce } from './utils';
 
@@ -193,7 +193,15 @@ class App {
 
         await Promise.all(containers.map(async ({url, container}) => {
             try {
-                const html = await fetchHtml(url);
+                // Use the already cleaned HTML from crawledResults if available
+                let html = this.crawledResults.get(url) || '';
+                
+                // If the HTML isn't in crawledResults, fetch it directly and clean it
+                if (!html) {
+                    const rawHtml = await fetchHtml(url);
+                    html = extractContent(rawHtml); // Apply extractContent to clean the HTML
+                }
+                
                 container.innerHTML = '';
                 
                 const heading = document.createElement('h3');

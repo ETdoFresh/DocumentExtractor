@@ -50,7 +50,7 @@ async function withRetry<T>(
  * - DOCTYPE declarations
  * - Script tags
  * - Style tags and CSS
- * - Meta tags
+ * - Meta tags (except charset)
  * - Navigation menus
  * - Ads and iframes
  * - Social media widgets
@@ -65,10 +65,13 @@ export function extractContent(html: string): string {
     const parser = new DOMParser();
     const doc = parser.parseFromString(html, 'text/html');
     
+    // Keep the title element but remove other unwanted head elements
+    const title = doc.title;
+    
     // Remove elements by selectors - these selectors target common non-content elements
     const unwantedSelectors = [
         'script', 'style', 'link', 'iframe', 'noscript',
-        'meta', 'head', 'svg', 'path', 'button', 'form',
+        'svg', 'path', 'button', 'form',
         'nav', 'aside', 'footer', 'header', 
         '[class*="cookie"]', '[class*="popup"]', '[class*="banner"]',
         '[class*="ad-"]', '[class*="-ad"]', '[class*="ads"]', '[id*="ad-"]', '[id*="-ad"]',
@@ -114,13 +117,12 @@ export function extractContent(html: string): string {
         }
     });
     
-    // Remove DOCTYPE, HTML tags, and HEAD 
-    // This is important for when the HTML content is displayed in a textarea
+    // Get the body content
     const cleanContent = doc.body.innerHTML;
     
     // Create a simple wrapper with just the content and title
     return `<div class="extracted-content">
-    <h1 class="page-title">${doc.title || ''}</h1>
+    <h1 class="page-title">${title || ''}</h1>
     ${cleanContent}
 </div>`.trim();
 }
