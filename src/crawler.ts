@@ -68,7 +68,7 @@ export function extractContent(html: string): string {
     // Remove elements by selectors - these selectors target common non-content elements
     const unwantedSelectors = [
         'script', 'style', 'link', 'iframe', 'noscript',
-        'meta', 'svg', 'path', 'button', 'form',
+        'meta', 'head', 'svg', 'path', 'button', 'form',
         'nav', 'aside', 'footer', 'header', 
         '[class*="cookie"]', '[class*="popup"]', '[class*="banner"]',
         '[class*="ad-"]', '[class*="-ad"]', '[class*="ads"]', '[id*="ad-"]', '[id*="-ad"]',
@@ -93,11 +93,11 @@ export function extractContent(html: string): string {
     // Clean up attributes that might contain scripts or tracking
     const allElements = doc.querySelectorAll('*');
     allElements.forEach(element => {
-        // Remove on* event handlers
+        // Remove on* event handlers and most attributes except for essential ones
+        const keepAttributes = ['href', 'src', 'alt', 'title', 'width', 'height'];
+        
         for (const attr of Array.from(element.attributes)) {
-            if (attr.name.startsWith('on') || 
-                attr.name.includes('data-') || 
-                ['id', 'class'].includes(attr.name)) {
+            if (!keepAttributes.includes(attr.name) || attr.name.startsWith('on')) {
                 element.removeAttribute(attr.name);
             }
         }
@@ -114,16 +114,15 @@ export function extractContent(html: string): string {
         }
     });
     
-    // Extract the body content
-    const body = doc.body;
+    // Remove DOCTYPE, HTML tags, and HEAD 
+    // This is important for when the HTML content is displayed in a textarea
+    const cleanContent = doc.body.innerHTML;
     
-    // Create a simplified HTML wrapper
-    return `
-<div class="extracted-content">
+    // Create a simple wrapper with just the content and title
+    return `<div class="extracted-content">
     <h1 class="page-title">${doc.title || ''}</h1>
-    ${body.innerHTML}
-</div>
-`.trim();
+    ${cleanContent}
+</div>`.trim();
 }
 
 /**
