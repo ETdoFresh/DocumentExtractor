@@ -43,6 +43,90 @@ async function withRetry<T>(
 }
 
 /**
+ * Extract and clean HTML content by removing unwanted elements.
+ * 
+ * This function takes the approach of preserving all content by default,
+ * and only removing elements that are not relevant to the content, such as:
+ * - DOCTYPE declarations
+ * - Script tags
+ * - Style tags and CSS
+ * - Meta tags
+ * - Navigation menus
+ * - Ads and iframes
+ * - Social media widgets
+ * - Cookie notices
+ * - Footers
+ * - Other non-content elements
+ * 
+ * @param html The raw HTML content
+ * @returns A cleaned HTML string without unwanted elements
+ */
+export function extractContent(html: string): string {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+    
+    // Remove elements by selectors - these selectors target common non-content elements
+    const unwantedSelectors = [
+        'script', 'style', 'link', 'iframe', 'noscript',
+        'meta', 'svg', 'path', 'button', 'form',
+        'nav', 'aside', 'footer', 'header', 
+        '[class*="cookie"]', '[class*="popup"]', '[class*="banner"]',
+        '[class*="ad-"]', '[class*="-ad"]', '[class*="ads"]', '[id*="ad-"]', '[id*="-ad"]',
+        '[class*="social"]', '[class*="share"]',
+        '[class*="menu"]', '[class*="nav-"]', '[role="navigation"]',
+        '[class*="sidebar"]', '[class*="widget"]',
+        '[aria-hidden="true"]'
+    ];
+    
+    // Remove all elements matching the unwanted selectors
+    unwantedSelectors.forEach(selector => {
+        try {
+            const elements = doc.querySelectorAll(selector);
+            elements.forEach(element => {
+                element.parentNode?.removeChild(element);
+            });
+        } catch (e) {
+            // Ignore errors for selectors that might not be valid
+        }
+    });
+    
+    // Clean up attributes that might contain scripts or tracking
+    const allElements = doc.querySelectorAll('*');
+    allElements.forEach(element => {
+        // Remove on* event handlers
+        for (const attr of Array.from(element.attributes)) {
+            if (attr.name.startsWith('on') || 
+                attr.name.includes('data-') || 
+                ['id', 'class'].includes(attr.name)) {
+                element.removeAttribute(attr.name);
+            }
+        }
+    });
+    
+    // Remove empty elements (after their children might have been removed)
+    const emptyElements = doc.querySelectorAll('div, span, p');
+    emptyElements.forEach(element => {
+        if (!element.textContent?.trim() && 
+            !element.querySelector('img') && 
+            !element.querySelector('video') &&
+            element.children.length === 0) {
+            element.parentNode?.removeChild(element);
+        }
+    });
+    
+    // Extract the body content
+    const body = doc.body;
+    
+    // Create a simplified HTML wrapper
+    return `
+<div class="extracted-content">
+    <h1 class="page-title">${doc.title || ''}</h1>
+    ${body.innerHTML}
+</div>
+`.trim();
+}
+
+/**
  * Extract and normalize links from the provided HTML.
  * Uses DOMParser to safely extract <a> tags.
  */
@@ -125,7 +209,9 @@ export async function crawl(
         const html = await fetchHtml(url);
         semaphore.release();
         
-        results.set(url, html);
+        // Store the cleaned version of HTML instead of the full content
+        const cleanedHtml = extractContent(html);
+        results.set(url, cleanedHtml);
 
         if (depth > 1) {
             // Recursively fetch child pages with concurrency limit
