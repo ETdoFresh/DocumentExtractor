@@ -43,6 +43,23 @@ async function withRetry<T>(
 }
 
 /**
+ * Clean up excessive whitespace in HTML content while preserving structure.
+ * This removes multiple blank lines and normalizes indentation.
+ */
+function cleanWhitespace(html: string): string {
+    return html
+        // Replace multiple blank lines with a single newline
+        .replace(/[\r\n]+\s*[\r\n]+/g, '\n')
+        // Remove whitespace between closing and opening tags
+        .replace(/>\s+</g, '><')
+        // Add appropriate newlines and indentation for readability
+        .replace(/(<\/?(?:div|p|h[1-6]|ul|ol|li|table|tr|td|th|thead|tbody|section|article|header|footer|nav|aside|main)[^>]*>)/g, '\n$1')
+        // Clean up any resulting multiple newlines
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
+}
+
+/**
  * Extract and clean HTML content by removing unwanted elements.
  * 
  * This function takes the approach of preserving all content by default,
@@ -121,10 +138,10 @@ export function extractContent(html: string): string {
     const cleanContent = doc.body.innerHTML;
     
     // Create a simple wrapper with just the content and title
-    return `<div class="extracted-content">
+    return cleanWhitespace(`<div class="extracted-content">
     <h1 class="page-title">${title || ''}</h1>
     ${cleanContent}
-</div>`.trim();
+</div>`);
 }
 
 /**
